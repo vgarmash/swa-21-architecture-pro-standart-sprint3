@@ -1,0 +1,49 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+
+!include $ICONURL/font-awesome-5/users.puml
+!include $ICONURL/font-awesome-5/user_tie.puml
+!include $ICONURL/font-awesome-5/house_user.puml
+
+
+
+title Системный контекст: MVP Цифровизации Депозитов
+
+Person(клиент, "Клиент", "Физическое лицо, открывающее депозит", $sprite="users")
+Person(менеджер_колцентра, "Менеджер кол-центра", "Обрабатывает заявки с сайта", $sprite="user_tie")
+Person(менеджер_бэкофиса, "Менеджер бэк-офиса", "Подтверждает заявки в АБС", $sprite="user_tie")
+
+Boundary(банк, "IT-ландшафт банка") {
+    System(сайт, "Сайт банка", "React.js, PHP\nПрием заявок от новых клиентов")
+    System(иб, "Интернет-Банк (ИБ)", "ASP.NET MVC 4.5\nОнлайн-открытие депозитов")
+    System(колцентр, "Система кол-центра", "Java, React.js\nОбработка заявок с сайта")
+    System(абс, "АБС", "Delphi, Oracle\nОсновная банковская система")
+
+    System_Boundary(мвп, "MVP Цифровизации Депозитов") {
+        System(мвп_система, "Цифровизация Депозитов", "Координирует процесс открытия депозитов")
+    }
+}
+System_Boundary(внешние_системы, "Внешние системы") {
+    System_Ext(смс_шлюз, "СМС-шлюз", "Интеграция с телеком-оператором")
+    System_Ext(телеком, "Телеком-оператор", "Внешний оператор связи")
+}
+
+' Взаимодействия
+Rel(клиент, сайт, "Просматривает депозиты\nОставляет заявку", "HTTPS")
+Rel(клиент, иб, "Открывает депозит онлайн\nПодтверждает по SMS", "HTTPS")
+
+Rel(сайт, мвп_система, "Передает заявки", "REST/HTTPS")
+Rel(иб, мвп_система, "Инициирует открытие депозита", "REST/HTTPS")
+
+Rel(мвп_система, абс, "Передает заявки асинхронно", "Kafka/Events")
+Rel(мвп_система, смс_шлюз, "Отправка SMS", "API/HTTPS")
+Rel(мвп_система, колцентр, "Передает заявки с сайта", "API/HTTPS")
+
+Rel(смс_шлюз, телеком, "Маршрутизация SMS", "API")
+
+Rel(менеджер_колцентра, колцентр, "Обрабатывает заявки", "Web UI")
+Rel(менеджер_бэкофиса, абс, "Подтверждает заявки", "Desktop Client")
+
+@enduml
