@@ -1,0 +1,53 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Контейнеры: Онлайн-подача заявок на кредит
+
+Person(клиент_сайт, "Клиент (новый)", "Подает заявку через сайт")
+Person(клиент_иб, "Клиент (существующий)", "Подает заявку через ИБ")
+
+System_Boundary(фронтенд, "Frontend приложения") {
+    Container(сайт_ui, "Сайт банка", "React.js, PHP", "Подача заявок новыми клиентами")
+    Container(иб_ui, "Интернет-Банк", "ASP.NET MVC 4.5", "Подача заявок существующими клиентами")
+}
+
+System_Boundary(бэкенд, "Backend сервисы") {
+    Container(credit_service, "Credit Service", "Java Spring Boot", "Оркестрация кредитного процесса")
+    Container(credit_db, "Credit Database", "MS SQL", "Временное хранение заявок")
+
+    Container(кредитный_конвейер, "Кредитный конвейер", "Camunda, Java", "Оркестрация BPM процессов")
+    Container(конвейер_бд, "Конвейер БД", "Oracle", "Хранение процессов Camunda")
+}
+
+System_Boundary(существующие_системы, "Существующие системы") {
+    Container(абс, "АБС", "Delphi, Oracle", "Основная банковская система")
+    Container(скоринг, "Система скоринга", "Python, Flask", "Кредитный скоринг")
+    Container(нотификации, "Notification Service", "Java Spring Boot", "Отправка SMS")
+}
+
+System_Boundary(внешние_системы, "Внешние системы") {
+    System_Ext(бки, "БКИ", "Внешнее API")
+    System_Ext(смс_шлюз, "СМС-шлюз", "REST API")
+}
+
+' Взаимодействия
+Rel(клиент_сайт, сайт_ui, "Подает заявку", "HTTPS")
+Rel(клиент_иб, иб_ui, "Подает заявку", "HTTPS")
+
+Rel(сайт_ui, credit_service, "Создание заявки", "REST/HTTPS")
+Rel(иб_ui, credit_service, "Создание заявки", "REST/HTTPS")
+
+Rel(credit_service, кредитный_конвейер, "Запуск процесса", "REST/HTTPS")
+Rel(credit_service, скоринг, "Запрос скоринга", "REST/HTTPS")
+Rel(credit_service, нотификации, "Отправка уведомлений", "REST/HTTPS")
+
+Rel(кредитный_конвейер, абс, "Синхронизация данных", "DB Sync")
+Rel(скоринг, бки, "Запрос кредитной истории", "REST/HTTPS")
+Rel(скоринг, абс, "Получение данных клиента", "REST/HTTPS")
+
+Rel(нотификации, смс_шлюз, "Отправка SMS", "API/HTTPS")
+
+Rel(credit_service, credit_db, "Хранение заявок", "JDBC")
+Rel(кредитный_конвейер, конвейер_бд, "Хранение процессов", "JDBC")
+
+@enduml
