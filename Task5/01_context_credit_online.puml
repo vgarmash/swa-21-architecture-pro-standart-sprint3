@@ -1,0 +1,35 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Контекст: Онлайн-подача заявок на кредит
+
+Person(клиент_сайт, "Клиент (новый)", "Подает заявку через сайт")
+Person(клиент_иб, "Клиент (существующий)", "Подает заявку через ИБ")
+Person(менеджер, "Менеджер бэк-офиса", "Обрабатывает заявки")
+
+System(сайт, "Сайт банка", "React.js, PHP")
+System(иб, "Интернет-Банк", "ASP.NET MVC 4.5")
+System(абс, "АБС", "Delphi, Oracle")
+System(скоринг, "Система кредитного скоринга", "Python, Flask")
+System_Ext(бки, "Бюро кредитных историй", "Внешняя система")
+
+System_Boundary(кредитный_процесс, "Кредитный процесс") {
+    System(кредитный_конвейер, "Кредитный конвейер", "Camunda, Java")
+    System(credit_service, "Credit Service", "Java Spring Boot")
+}
+
+Rel(клиент_сайт, сайт, "Подает заявку на кредит", "HTTPS")
+Rel(клиент_иб, иб, "Подает заявку на кредит", "HTTPS")
+Rel(менеджер, абс, "Обрабатывает заявки", "Desktop Client")
+
+Rel(сайт, credit_service, "Передает заявки", "REST/HTTPS")
+Rel(иб, credit_service, "Передает заявки", "REST/HTTPS")
+
+Rel(credit_service, кредитный_конвейер, "Инициирует процесс", "REST/HTTPS")
+Rel(credit_service, скоринг, "Запрос скоринга", "REST/HTTPS")
+
+Rel(кредитный_конвейер, абс, "Синхронизация данных", "База данных")
+Rel(скоринг, бки, "Запрос данных", "REST/HTTPS")
+Rel(скоринг, абс, "Получение данных клиента", "REST/HTTPS")
+
+@enduml
