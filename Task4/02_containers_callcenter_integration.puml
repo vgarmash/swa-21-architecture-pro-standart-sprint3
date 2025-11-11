@@ -1,0 +1,42 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Контейнеры: Интеграция кол-центров с системой ставок
+
+Person(менеджер_банк, "Менеджер кол-центра банка", "Консультирует клиентов")
+Person(администратор, "Администратор бэк-офиса", "Управляет выгрузкой ставок")
+
+System_Boundary(банк, "Банк 'Стандарт'") {
+    Container(ui_колцентр, "Web UI кол-центра", "React.js", "Интерфейс для менеджеров")
+    Container(бэкенд_колцентр, "Бэкенд кол-центра", "Java Spring Boot", "Обработка бизнес-логики")
+
+    Container(product_service, "Product Service", "Java Spring Boot", "Управление ставками\nAPI + файловая выгрузка")
+    ContainerDb(product_db, "Product Database", "MS SQL", "Хранение продуктов и ставок")
+
+    Container(sftp_клиент, "SFTP клиент", "Java", "Выгрузка файлов на сервер партнёра")
+}
+
+System_Boundary(партнер, "Партнёрский кол-центр") {
+    Container_Ext(ui_партнер, "UI системы партнёра", "Внешняя система", "Интерфейс для менеджеров")
+    ContainerDb_Ext(бд_партнер, "Локальная БД ставок", "Любая СУБД", "Хранение ставок из файлов")
+    Container_Ext(обработчик_файлов, "Обработчик файлов", "Внешняя система", "Загрузка данных из файлов")
+    System_Ext(sftp_сервер, "SFTP сервер партнёра", "Внешняя система")
+}
+
+
+
+' Взаимодействия
+Rel(менеджер_банк, ui_колцентр, "Работает с системой", "HTTPS")
+Rel(ui_колцентр, бэкенд_колцентр, "API вызовы", "REST/HTTPS")
+Rel(бэкенд_колцентр, product_service, "Запрос ставок", "REST/HTTPS\n< 300 мс")
+
+Rel(администратор, product_service, "Управляет выгрузкой", "Web UI/HTTPS")
+Rel(product_service, sftp_клиент, "Запрос на выгрузку", "Java API")
+Rel(product_service, product_db, "Получение данных", "SQL/JDBC")
+Rel(sftp_клиент, sftp_сервер, "Отправка файлов", "SFTP")
+
+Rel(обработчик_файлов, sftp_сервер, "Забор файлов", "SFTP")
+Rel(обработчик_файлов, бд_партнер, "Загрузка данных", "DB Connection")
+Rel(ui_партнер, бд_партнер, "Чтение ставок", "DB Connection")
+
+@enduml

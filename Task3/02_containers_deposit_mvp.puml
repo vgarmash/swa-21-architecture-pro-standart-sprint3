@@ -1,0 +1,82 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+
+!include $ICONURL/font-awesome-5/users.puml
+!include $ICONURL/font-awesome-5/user_tie.puml
+!include $ICONURL/font-awesome-5/house_user.puml
+
+title Контейнеры: MVP Цифровизации Депозитов
+
+Person(клиент, "Клиент", "Физическое лицо, открывающее депозит", $sprite="users")
+Person(менеджер_бэкофиса, "Менеджер бэк-офиса", "Управляет ставками и заявками", $sprite="user_tie")
+Person(менеджер_колцентра, "Менеджер кол-центра", "Обрабатывает заявки с сайта", $sprite="user_tie")
+
+Boundary(банк, "IT-ландшафт банка") {
+    System_Boundary(фронтенд, "Frontend приложения") {
+        Container(сайт, "Сайт банка", "React.js, PHP", "Отображение депозитов\nПрием заявок от новых клиентов")
+        Container(иб_фронтенд, "Интернет-Банк (Frontend)", "ASP.NET MVC 4.5", "Личный кабинет\nОтображение персонализированных ставок")
+    }
+
+    System_Boundary(бэкенд, "Backend сервисы (Java Spring Boot)") {
+        Container(product_service, "Product Service", "Java Spring Boot", "Управление продуктами и ставками\nКэширование данных")
+        Container(deposit_service, "Deposit Service", "Java Spring Boot", "Обработка заявок на депозиты\nКоординация бизнес-процесса")
+        Container(notification_service, "Notification Service", "Java Spring Boot", "Управление SMS-уведомлениями\nЕдиная точка коммуникаций")
+
+        ContainerDb(product_db, "Product Database", "MS SQL", "Хранение продуктов и ставок\n{size: 10GB}")
+        ContainerDb(deposit_db, "Deposit Service DB", "MS SQL", "Временное хранение заявок\n{size: 5GB}")
+    }
+
+    System_Boundary(интеграции, "Интеграционная шина") {
+        ContainerQueue(kafka, "Apache Kafka", "Message Broker", "Асинхронная коммуникация\nБуферизация запросов к АБС")
+    }
+
+    System_Boundary(внутренние_системы, "Внутренние системы банка") {
+        Container(абс, "АБС", "Delphi, Oracle, PL/SQL", "Основная банковская система\nОбработка финансовых операций")
+        Container(абс_консьюмер, "Консьюмер Kafka", "Java", "Чтение событий из Kafka\nСоздание заявок в АБС")
+        Container(колцентр_система, "Система кол-центра", "Java, React.js, PostgreSQL", "Обработка заявок от менеджеров\nМикросервисная архитектура")
+    }
+}
+System_Boundary(внешние_системы, "Внешние системы") {
+    Container_Ext(смс_шлюз, "СМС-шлюз", "REST API", "Интеграция с телеком-оператором")
+    System_Ext(телеком_оператор, "Телеком-оператор", "Внешний оператор связи")
+}
+
+' Взаимодействия между контейнерами
+Rel(клиент, сайт, "Просматривает\nоставляет заявку", "HTTPS")
+Rel(клиент, иб_фронтенд, "Работает с депозитами", "HTTPS")
+
+Rel(сайт, product_service, "Получает список депозитов", "REST/HTTPS")
+Rel(сайт, колцентр_система, "Передает заявки новых клиентов", "API/HTTPS")
+
+Rel(иб_фронтенд, product_service, "Получает персонализированные ставки", "REST/HTTPS")
+Rel(иб_фронтенд, deposit_service, "Инициирует открытие депозита", "REST/HTTPS")
+
+Rel(deposit_service, product_service, "Проверяет условия продукта", "REST/HTTPS")
+Rel(deposit_service, notification_service, "Запрос на отправку SMS", "REST/HTTPS")
+Rel(deposit_service, kafka, "Публикует события заявок", "Kafka Protocol")
+
+Rel(notification_service, смс_шлюз, "Отправляет SMS", "API/HTTPS")
+Rel(смс_шлюз, телеком_оператор, "Отправка SMS клиентам", "API")
+
+Rel(абс_консьюмер, kafka, "Читает события заявок", "Kafka Protocol")
+Rel(абс_консьюмер, абс, "Создает заявки в АБС", "Внутреннее API/DB")
+
+Rel(менеджер_бэкофиса, product_service, "Управляет ставками", "Web UI/HTTPS")
+Rel(менеджер_бэкофиса, абс, "Подтверждает заявки", "Desktop Client")
+Rel(менеджер_колцентра, колцентр_система, "Обрабатывает заявки", "Web UI")
+
+' Хранилища данных
+Rel(product_service, product_db, "Чтение/запись", "JDBC")
+Rel(deposit_service, deposit_db, "Сохраняет состояние заявок", "JDBC")
+
+left footer
+Архитектурные решения
+- **Асинхронность**: Kafka защищает АБС от нагрузки
+- **Изоляция**: Микросервисы обходят ограничения монолита ИБ
+- **Централизация**: Product Service заменяет XLS-файлы
+- **Унификация**: Notification Service - единая точка для SMS
+- **Комплаенс**: Все передачи данных защищены TLS
+end footer
+
+@enduml
